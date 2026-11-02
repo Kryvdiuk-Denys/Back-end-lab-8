@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: coworking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: coworking
+      POSTGRES_USER: coworking
+      POSTGRES_PASSWORD: coworking
+    ports:
+      - "5433:5432"
+    volumes:
+      - booking-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coworking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  workspace-db:
+    image: postgres:16-alpine
+    container_name: coworking-workspace-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: workspaces
+      POSTGRES_USER: coworking
+      POSTGRES_PASSWORD: coworking
+    ports:
+      - "5434:5432"
+    volumes:
+      - workspace-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coworking -d workspaces"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: coworking-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  workspace-service:
+    build:
+      context: .
+      dockerfile: workspace-service/Dockerfile
+    container_name: coworking-workspace-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8082
+      WORKSPACE_DB_URL: jdbc:postgresql://workspace-db:5432/workspaces
+      WORKSPACE_DB_USERNAME: coworking
+      WORKSPACE_DB_PASSWORD: coworking
+      WORKSPACE_SERVICE_TOKEN: ${WORKSPACE_SERVICE_TOKEN:-local-workspace-token}
+      KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/coworking
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/coworking/protocol/openid-connect/certs
+    ports:
+      - "8082:8082"
+    depends_on:
+      workspace-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: booking-service/Dockerfile
+    container_name: coworking-booking-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      BOOKING_DB_URL: jdbc:postgresql://postgres:5432/coworking
+      BOOKING_DB_USERNAME: coworking
+      BOOKING_DB_PASSWORD: coworking
+      WORKSPACE_SERVICE_URL: http://workspace-service:8082
+      WORKSPACE_SERVICE_TOKEN: ${WORKSPACE_SERVICE_TOKEN:-local-workspace-token}
+      KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/coworking
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/coworking/protocol/openid-connect/certs
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      workspace-service:
+        condition: service_started
+      keycloak:
+        condition: service_started
+
+volumes:
+  booking-data:
+  workspace-data:

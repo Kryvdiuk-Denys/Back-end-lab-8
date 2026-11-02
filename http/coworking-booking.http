@@ -1,0 +1,340 @@
+@app = http://localhost:8080
+@workspaceApp = http://localhost:8082
+@keycloak = http://localhost:8081/realms/coworking
+
+### Defense setup
+### 1. From the project root, run: docker compose up -d --build
+### 2. Wait for booking-service and workspace-service to start
+### 3. Execute token requests first: USER, MANAGER, ADMIN
+### 4. Execute API requests from top to bottom
+
+### UI: unauthenticated user is redirected to Keycloak login
+GET {{app}}/
+
+### API security: request without JWT is rejected
+GET {{app}}/api/workspaces
+
+> {%
+    client.test("API without JWT returns 401", function () {
+        client.assert(response.status === 401, "Expected 401 Unauthorized");
+    });
+%}
+
+### Get USER JWT
+POST {{keycloak}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=coworking-api&client_secret=api-secret&username=user&password=user
+
+> {%
+    client.test("USER token received", function () {
+        client.assert(response.status === 200, "Expected token response");
+        client.assert(!!response.body.access_token, "access_token is missing");
+    });
+    client.global.set("user_token", response.body.access_token);
+%}
+
+### Get MANAGER JWT
+POST {{keycloak}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=coworking-api&client_secret=api-secret&username=manager&password=manager
+
+> {%
+    client.test("MANAGER token received", function () {
+        client.assert(response.status === 200, "Expected token response");
+        client.assert(!!response.body.access_token, "access_token is missing");
+    });
+    client.global.set("manager_token", response.body.access_token);
+%}
+
+### Get ADMIN JWT
+POST {{keycloak}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=coworking-api&client_secret=api-secret&username=admin&password=admin
+
+> {%
+    client.test("ADMIN token received", function () {
+        client.assert(response.status === 200, "Expected token response");
+        client.assert(!!response.body.access_token, "access_token is missing");
+    });
+    client.global.set("admin_token", response.body.access_token);
+%}
+
+### Read workspaces as USER
+GET {{app}}/api/workspaces
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("USER can read workspaces", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### Workspace service is available directly on port 8082
+GET {{workspaceApp}}/api/workspaces
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Workspace service responds to an authenticated request", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### Create workspace as MANAGER
+POST {{app}}/api/workspaces
+Authorization: Bearer {{manager_token}}
+Content-Type: application/json
+
+{
+  "name": "Defense Room {{$timestamp}}",
+  "type": "ROOM",
+  "capacity": 4,
+  "hourlyRate": 25.00,
+  "active": true
+}
+
+> {%
+    client.test("MANAGER can create workspace", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(!!response.body.id, "workspace id is missing");
+    });
+    client.global.set("workspace_id", response.body.id);
+%}
+
+### Read created workspace by id
+GET {{app}}/api/workspaces/{{workspace_id}}
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Created workspace can be read", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.id == client.global.get("workspace_id"), "Unexpected workspace id");
+    });
+%}
+
+### Check a booking asynchronously: availability and price calls run in parallel
+POST {{app}}/api/bookings/preflight
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "workspaceId": {{workspace_id}},
+  "startsAt": "2026-11-21T10:00:00",
+  "endsAt": "2026-11-21T12:00:00"
+}
+
+> {%
+    client.test("Preflight combines async booking checks", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.status === "READY", "Expected completed preparation checks");
+        client.assert(response.body.workspaceAvailable === true, "Workspace should be available");
+        client.assert(response.body.estimatedPrice === 50, "Unexpected estimated price");
+    });
+%}
+
+### Update workspace as MANAGER
+PUT {{app}}/api/workspaces/{{workspace_id}}
+Authorization: Bearer {{manager_token}}
+Content-Type: application/json
+
+{
+  "name": "Defense Room {{$timestamp}} Updated",
+  "type": "ROOM",
+  "capacity": 6,
+  "hourlyRate": 30.00,
+  "active": true
+}
+
+> {%
+    client.test("MANAGER can update workspace", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.capacity === 6, "Workspace capacity was not updated");
+    });
+%}
+
+### Validation: invalid workspace request returns 400
+POST {{app}}/api/workspaces
+Authorization: Bearer {{manager_token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "type": "",
+  "capacity": 0,
+  "hourlyRate": 0,
+  "active": true
+}
+
+> {%
+    client.test("Invalid workspace returns 400", function () {
+        client.assert(response.status === 400, "Expected 400 Bad Request");
+    });
+%}
+
+### Create booking as USER for the created workspace
+POST {{app}}/api/bookings
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "workspaceId": {{workspace_id}},
+  "customerName": "Olena Demo",
+  "customerEmail": "olena.demo@example.com",
+  "startsAt": "2026-09-21T10:00:00",
+  "endsAt": "2026-09-21T12:30:00",
+  "status": "CONFIRMED"
+}
+
+> {%
+    client.test("USER can create booking", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(!!response.body.id, "booking id is missing");
+        client.assert(response.body.workspaceId == client.global.get("workspace_id"), "Unexpected workspace id");
+    });
+    client.global.set("booking_id", response.body.id);
+%}
+
+### Read bookings as USER
+GET {{app}}/api/bookings
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("USER can read bookings", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+    });
+%}
+
+### Read created booking by id
+GET {{app}}/api/bookings/{{booking_id}}
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Created booking can be read", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.id == client.global.get("booking_id"), "Unexpected booking id");
+    });
+%}
+
+### Update booking as MANAGER
+PUT {{app}}/api/bookings/{{booking_id}}
+Authorization: Bearer {{manager_token}}
+Content-Type: application/json
+
+{
+  "workspaceId": {{workspace_id}},
+  "customerName": "Olena Demo Updated",
+  "customerEmail": "olena.demo@example.com",
+  "startsAt": "2026-09-21T11:00:00",
+  "endsAt": "2026-09-21T13:00:00",
+  "status": "CONFIRMED"
+}
+
+> {%
+    client.test("MANAGER can update booking", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.customerName === "Olena Demo Updated", "Booking was not updated");
+    });
+%}
+
+### Business validation: booking end must be after start
+POST {{app}}/api/bookings
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "workspaceId": {{workspace_id}},
+  "customerName": "Invalid Period",
+  "customerEmail": "invalid.period@example.com",
+  "startsAt": "2026-09-21T13:00:00",
+  "endsAt": "2026-09-21T11:00:00",
+  "status": "CONFIRMED"
+}
+
+> {%
+    client.test("Invalid booking period returns 400", function () {
+        client.assert(response.status === 400, "Expected 400 Bad Request");
+    });
+%}
+
+### SecurityFilterChain denies non-admin on /api/admin/**
+GET {{app}}/api/admin/status
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("USER cannot access admin endpoint", function () {
+        client.assert(response.status === 403, "Expected 403 Forbidden");
+    });
+%}
+
+### SecurityFilterChain allows ADMIN on /api/admin/**
+GET {{app}}/api/admin/status
+Authorization: Bearer {{admin_token}}
+
+> {%
+    client.test("ADMIN can access admin endpoint", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.status === "admin access granted", "Unexpected admin status body");
+    });
+%}
+
+### Business rule: workspace with bookings cannot be deleted
+DELETE {{app}}/api/workspaces/{{workspace_id}}
+Authorization: Bearer {{admin_token}}
+
+> {%
+    client.test("Workspace with bookings cannot be deleted", function () {
+        client.assert(response.status === 400, "Expected 400 Bad Request");
+    });
+%}
+
+### @PreAuthorize denies USER deleting booking
+DELETE {{app}}/api/bookings/{{booking_id}}
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("USER cannot delete booking", function () {
+        client.assert(response.status === 403, "Expected 403 Forbidden");
+    });
+%}
+
+### Delete booking as ADMIN
+DELETE {{app}}/api/bookings/{{booking_id}}
+Authorization: Bearer {{admin_token}}
+
+> {%
+    client.test("ADMIN can delete booking", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+%}
+
+### Deleted booking returns 404
+GET {{app}}/api/bookings/{{booking_id}}
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Deleted booking returns 404", function () {
+        client.assert(response.status === 404, "Expected 404 Not Found");
+    });
+%}
+
+### Delete workspace as ADMIN after booking cleanup
+DELETE {{app}}/api/workspaces/{{workspace_id}}
+Authorization: Bearer {{admin_token}}
+
+> {%
+    client.test("ADMIN can delete workspace after bookings are removed", function () {
+        client.assert(response.status === 204, "Expected 204 No Content");
+    });
+%}
+
+### Deleted workspace returns 404
+GET {{app}}/api/workspaces/{{workspace_id}}
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Deleted workspace returns 404", function () {
+        client.assert(response.status === 404, "Expected 404 Not Found");
+    });
+%}

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Coworking Booking Static UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<aside class="sidebar">
+    <a class="brand" href="#bookings" data-view-link="bookings">
+        <span class="brand-mark">CB</span>
+        <span>
+            <strong>Coworking</strong>
+            <small>Booking UI</small>
+        </span>
+    </a>
+
+    <nav class="side-nav" aria-label="Main navigation">
+        <button class="nav-item active" type="button" data-view-link="bookings">
+            <span class="nav-icon">B</span>
+            Bookings
+        </button>
+        <button class="nav-item" type="button" data-view-link="workspaces">
+            <span class="nav-icon">W</span>
+            Workspaces
+        </button>
+        <button class="nav-item" type="button" data-view-link="admin">
+            <span class="nav-icon">A</span>
+            Admin
+        </button>
+    </nav>
+
+    <section class="role-panel" aria-label="Demo role">
+        <label for="roleSelect">Demo role</label>
+        <select id="roleSelect">
+            <option value="ADMIN">ADMIN</option>
+            <option value="MANAGER">MANAGER</option>
+            <option value="USER">USER</option>
+        </select>
+        <p id="roleHint">Full access</p>
+    </section>
+</aside>
+
+<main class="app-shell">
+    <header class="topbar">
+        <div>
+            <p class="eyebrow">Static prototype</p>
+            <h1 id="pageTitle">Bookings</h1>
+        </div>
+        <div class="top-actions">
+            <label class="search">
+                <span>Search</span>
+                <input id="searchInput" type="search" placeholder="Search records">
+            </label>
+            <button class="button secondary" type="button" id="resetDemoBtn">Reset demo</button>
+            <button class="button primary" type="button" id="primaryActionBtn">New booking</button>
+        </div>
+    </header>
+
+    <section class="notice" id="notice" hidden></section>
+
+    <section class="stats-grid" aria-label="Summary">
+        <article class="stat">
+            <span>Active workspaces</span>
+            <strong id="statWorkspaces">0</strong>
+        </article>
+        <article class="stat">
+            <span>Confirmed bookings</span>
+            <strong id="statBookings">0</strong>
+        </article>
+        <article class="stat">
+            <span>Today revenue</span>
+            <strong id="statRevenue">0</strong>
+        </article>
+    </section>
+
+    <section class="panel" id="bookingsView">
+        <div class="panel-head">
+            <h2>Bookings</h2>
+            <span id="bookingCount" class="count">0 records</span>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Workspace</th>
+                    <th>Customer</th>
+                    <th>Period</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th class="actions">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="bookingsTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel hidden" id="workspacesView">
+        <div class="panel-head">
+            <h2>Workspaces</h2>
+            <span id="workspaceCount" class="count">0 records</span>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Capacity</th>
+                    <th>Hourly rate</th>
+                    <th>Status</th>
+                    <th class="actions">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="workspacesTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="admin-layout hidden" id="adminView">
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Access policy</h2>
+            </div>
+            <dl class="policy-list">
+                <div>
+                    <dt>ADMIN</dt>
+                    <dd>Can create, read, update, delete and open admin area.</dd>
+                </div>
+                <div>
+                    <dt>MANAGER</dt>
+                    <dd>Can create and update bookings/workspaces, but cannot delete records.</dd>
+                </div>
+                <div>
+                    <dt>USER</dt>
+                    <dd>Can read records and create bookings, but cannot edit workspaces or delete.</dd>
+                </div>
+            </dl>
+        </section>
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Security checks</h2>
+            </div>
+            <div class="check-list">
+                <button class="button secondary" type="button" id="checkAdminBtn">Open admin resource</button>
+                <button class="button secondary" type="button" id="checkDeleteBtn">Try delete booking</button>
+            </div>
+            <p class="muted-text" id="securityResult">Select a role and run a check.</p>
+        </section>
+    </section>
+</main>
+
+<dialog id="recordDialog">
+    <form method="dialog" class="dialog-panel" id="recordForm">
+        <header class="dialog-head">
+            <h2 id="dialogTitle">Record</h2>
+            <button class="icon-button" type="button" id="closeDialogBtn" aria-label="Close">x</button>
+        </header>
+        <div id="formFields" class="form-grid"></div>
+        <footer class="dialog-actions">
+            <button class="button secondary" type="button" id="cancelDialogBtn">Cancel</button>
+            <button class="button primary" type="submit">Save</button>
+        </footer>
+    </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

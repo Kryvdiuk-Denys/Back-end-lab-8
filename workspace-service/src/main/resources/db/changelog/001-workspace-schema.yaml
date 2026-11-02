@@ -1,0 +1,113 @@
+databaseChangeLog:
+  - changeSet:
+      id: workspace-001-create-workspace
+      author: coworking
+      changes:
+        - createTable:
+            tableName: workspace
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_workspace
+                    nullable: false
+              - column:
+                  name: code
+                  type: VARCHAR(20)
+                  constraints:
+                    unique: true
+                    uniqueConstraintName: uq_workspace_code
+              - column:
+                  name: name
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_workspace_name
+              - column:
+                  name: type
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: capacity
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hourly_rate
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        - insert:
+            tableName: workspace
+            columns:
+              - column:
+                  name: code
+                  value: WS-001
+              - column:
+                  name: name
+                  value: Focus Desk A1
+              - column:
+                  name: type
+                  value: DESK
+              - column:
+                  name: capacity
+                  valueNumeric: 1
+              - column:
+                  name: hourly_rate
+                  valueNumeric: 120.00
+              - column:
+                  name: active
+                  valueBoolean: true
+        - insert:
+            tableName: workspace
+            columns:
+              - column:
+                  name: code
+                  value: WS-002
+              - column:
+                  name: name
+                  value: Meeting Room Blue
+              - column:
+                  name: type
+                  value: ROOM
+              - column:
+                  name: capacity
+                  valueNumeric: 6
+              - column:
+                  name: hourly_rate
+                  valueNumeric: 450.00
+              - column:
+                  name: active
+                  valueBoolean: true
+        - insert:
+            tableName: workspace
+            columns:
+              - column:
+                  name: code
+                  value: WS-003
+              - column:
+                  name: name
+                  value: Podcast Studio
+              - column:
+                  name: type
+                  value: STUDIO
+              - column:
+                  name: capacity
+                  valueNumeric: 3
+              - column:
+                  name: hourly_rate
+                  valueNumeric: 700.00
+              - column:
+                  name: active
+                  valueBoolean: true
