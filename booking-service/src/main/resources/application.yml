@@ -2,6 +2,19 @@ spring:
   application:
     name: booking-service
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:coworking}
+    password: ${RABBITMQ_PASSWORD:coworking}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: true
+
   quartz:
     job-store-type: jdbc
     jdbc:

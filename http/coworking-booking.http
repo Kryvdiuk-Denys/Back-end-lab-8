@@ -82,6 +82,37 @@ Authorization: Bearer {{user_token}}
     });
 %}
 
+### Lab 8: create a workspace directly on the producer service (no service-to-service HTTP call)
+POST {{workspaceApp}}/api/workspaces
+Authorization: Bearer {{manager_token}}
+Content-Type: application/json
+
+{
+  "name": "Broker Demo {{$timestamp}}",
+  "type": "ROOM",
+  "capacity": 4,
+  "hourlyRate": 35.00,
+  "active": true
+}
+
+> {%
+    client.test("Workspace producer creates a workspace", function () {
+        client.assert(response.status === 201, "Expected 201 Created");
+        client.assert(!!response.body.id, "workspace id is missing");
+    });
+%}
+
+### Lab 8: the booking consumer persists the broker event
+GET {{app}}/api/events/workspaces
+Authorization: Bearer {{user_token}}
+
+> {%
+    client.test("Booking consumer exposes received workspace events", function () {
+        client.assert(response.status === 200, "Expected 200 OK");
+        client.assert(response.body.some(event => event.workspaceName.startsWith("Broker Demo")), "Consumer event is missing");
+    });
+%}
+
 ### Create workspace as MANAGER
 POST {{app}}/api/workspaces
 Authorization: Bearer {{manager_token}}

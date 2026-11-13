@@ -35,6 +35,24 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: coworking-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-coworking}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-coworking}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     container_name: coworking-keycloak
@@ -63,6 +81,10 @@ services:
       WORKSPACE_DB_USERNAME: coworking
       WORKSPACE_DB_PASSWORD: coworking
       WORKSPACE_SERVICE_TOKEN: ${WORKSPACE_SERVICE_TOKEN:-local-workspace-token}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-coworking}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-coworking}
       KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/coworking
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/coworking/protocol/openid-connect/certs
     ports:
@@ -72,6 +94,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   booking-service:
     build:
@@ -86,6 +110,10 @@ services:
       BOOKING_DB_PASSWORD: coworking
       WORKSPACE_SERVICE_URL: http://workspace-service:8082
       WORKSPACE_SERVICE_TOKEN: ${WORKSPACE_SERVICE_TOKEN:-local-workspace-token}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-coworking}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-coworking}
       KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/coworking
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/coworking/protocol/openid-connect/certs
     ports:
@@ -97,7 +125,10 @@ services:
         condition: service_started
       keycloak:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   booking-data:
   workspace-data:
+  rabbitmq-data:

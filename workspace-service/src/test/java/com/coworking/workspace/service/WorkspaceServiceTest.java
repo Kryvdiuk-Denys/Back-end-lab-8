@@ -3,6 +3,7 @@ package com.coworking.workspace.service;
 import com.coworking.workspace.ResourceNotFoundException;
 import com.coworking.workspace.WorkspaceService;
 import com.coworking.common.dto.WorkspaceDto;
+import com.coworking.common.dto.WorkspaceCreatedEvent;
 import com.coworking.workspace.entity.Workspace;
 import com.coworking.workspace.mapper.WorkspaceMapper;
 import com.coworking.workspace.repository.WorkspaceRepository;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -35,6 +37,9 @@ class WorkspaceServiceTest {
 
     @Mock
     private WorkspaceMapper workspaceMapper;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private WorkspaceService workspaceService;
@@ -126,6 +131,7 @@ class WorkspaceServiceTest {
         assertSame(response, result);
         verify(workspaceRepository).save(mappedEntity);
         verify(workspaceMapper).toDto(savedEntity);
+        verify(eventPublisher).publishEvent(any(WorkspaceCreatedEvent.class));
     }
 
     @Test

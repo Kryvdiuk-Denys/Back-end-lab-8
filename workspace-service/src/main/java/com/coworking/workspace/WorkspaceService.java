@@ -1,13 +1,17 @@
 package com.coworking.workspace;
 
 import com.coworking.common.dto.WorkspaceDto;
+import com.coworking.common.dto.WorkspaceCreatedEvent;
 import com.coworking.workspace.entity.Workspace;
 import com.coworking.workspace.mapper.WorkspaceMapper;
 import com.coworking.workspace.repository.WorkspaceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -15,10 +19,16 @@ public class WorkspaceService {
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMapper workspaceMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public WorkspaceService(WorkspaceRepository workspaceRepository, WorkspaceMapper workspaceMapper) {
+    public WorkspaceService(
+            WorkspaceRepository workspaceRepository,
+            WorkspaceMapper workspaceMapper,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.workspaceRepository = workspaceRepository;
         this.workspaceMapper = workspaceMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<WorkspaceDto> findAll() {
@@ -40,7 +50,19 @@ public class WorkspaceService {
             created.setCode("WS-" + created.getId());
             created = workspaceRepository.save(created);
         }
-        return workspaceMapper.toDto(created);
+        WorkspaceDto createdDto = workspaceMapper.toDto(created);
+        eventPublisher.publishEvent(new WorkspaceCreatedEvent(
+                UUID.randomUUID(),
+                createdDto.getId(),
+                createdDto.getCode(),
+                createdDto.getName(),
+                createdDto.getType(),
+                createdDto.getCapacity(),
+                createdDto.getHourlyRate(),
+                createdDto.isActive(),
+                LocalDateTime.now()
+        ));
+        return createdDto;
     }
 
     @Transactional

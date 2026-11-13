@@ -118,6 +118,16 @@ Quartz uses a PostgreSQL JDBC job store. Liquibase adds its `QRTZ_*` tables thro
 
 Trigger values override job defaults through Quartz's merged `JobDataMap`. Each cron trigger has a `DO_NOTHING` misfire policy and uses `booking.quartz.time-zone` (default `Europe/Kyiv`, invalid IDs fall back to GMT). Reminder delivery is represented by a persisted `reminder_sent_at` marker and a log entry; repeated runs therefore skip reminders already processed. Job failures are logged and left for the next scheduled fire.
 
+## Message broker (Lab 8)
+
+`workspace-service` publishes a `WorkspaceCreatedEvent` after a workspace insert commits. RabbitMQ routes the persistent JSON message through the durable `coworking.booking.workspace-created` queue, and `booking-service` stores the event in its own database. The event contract is a DTO in `common`; the consumer does not depend on producer-service classes or call it over HTTP in this flow. Read received events from `GET /api/events/workspaces` on the booking service.
+
+Start the broker and services with `docker compose up -d --build`. RabbitMQ uses the Compose service name `rabbitmq` inside Docker and `localhost` by default for IDE runs. Set `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, and `RABBITMQ_PASSWORD` to override the defaults. The management console is at `http://localhost:15672` (default login `coworking` / `coworking`).
+
+For the event demo, send an authenticated `POST /api/workspaces` directly to `http://localhost:8082`, then read `http://localhost:8080/api/events/workspaces`. To demonstrate consumer downtime, run `docker compose stop booking-service`, create two workspaces through port 8082, then run `docker compose start booking-service`. Both events remain in RabbitMQ and appear in the booking endpoint after the consumer reconnects. RabbitMQ's data volume preserves its durable queue across broker restarts.
+
+The consumer inserts events with `ON CONFLICT (event_id) DO NOTHING`; redelivery therefore leaves one stored row. A unit test covers repeated processing of the same event.
+
 Manual token request example:
 
 ```bash

@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-booking-reminder.yaml
   - include:
       file: db/changelog/003-quartz-schema.yaml
+  - include:
+      file: db/changelog/004-workspace-created-events.yaml

@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: booking-004-workspace-created-events
+      author: coworking
+      changes:
+        - createTable:
+            tableName: workspace_created_event
+            columns:
+              - column:
+                  name: event_id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_workspace_created_event
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_code
+                  type: VARCHAR(20)
+              - column:
+                  name: workspace_name
+                  type: VARCHAR(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_type
+                  type: VARCHAR(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: capacity
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hourly_rate
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_created_event
+            indexName: ix_workspace_created_event_occurred_at
+            columns:
+              - column:
+                  name: occurred_at

@@ -1,6 +1,18 @@
 spring:
   application:
     name: workspace-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:coworking}
+    password: ${RABBITMQ_PASSWORD:coworking}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: true
   datasource:
     url: ${WORKSPACE_DB_URL:jdbc:postgresql://localhost:5434/workspaces}
     username: ${WORKSPACE_DB_USERNAME:coworking}
